@@ -111,31 +111,118 @@ LIGAS = {
     },
     "Copa Mundial 2026": {
         # Grupo A
-        "Qatar": 1590, "Ecuador": 1620, "Senegal": 1700, "Paises Bajos": 1780,
+        "Mexico":                1710, "Sudafrica":             1580,
+        "Corea del Sur":         1680, "Chequia":               1670,
         # Grupo B
-        "Inglaterra": 1820, "Iran": 1640, "EE.UU.": 1700, "Gales": 1660,
+        "Canada":                1660, "Suiza":                 1720,
+        "Qatar":                 1590, "Bosnia y Herzegovina":  1640,
         # Grupo C
-        "Argentina": 1845, "Arabia Saudita": 1620, "Mexico": 1710, "Polonia": 1680,
+        "Brasil":                1850, "Marruecos":             1710,
+        "Haiti":                 1530, "Escocia":               1680,
         # Grupo D
-        "Francia": 1840, "Australia": 1650, "Dinamarca": 1730, "Tunez": 1620,
+        "Estados Unidos":        1700, "Paraguay":              1650,
+        "Australia":             1650, "Turquia":               1690,
         # Grupo E
-        "Espana": 1810, "Costa Rica": 1600, "Alemania": 1790, "Japon": 1700,
+        "Alemania":              1790, "Curazao":               1530,
+        "Costa de Marfil":       1680, "Ecuador":               1620,
         # Grupo F
-        "Belgica": 1780, "Canada": 1660, "Marruecos": 1710, "Croacia": 1760,
+        "Paises Bajos":          1780, "Japon":                 1700,
+        "Tunez":                 1620, "Suecia":                1720,
         # Grupo G
-        "Brasil": 1850, "Serbia": 1680, "Suiza": 1720, "Camerun": 1610,
+        "Belgica":               1780, "Egipto":                1650,
+        "Iran":                  1640, "Nueva Zelanda":         1580,
         # Grupo H
-        "Portugal": 1800, "Ghana": 1600, "Uruguay": 1740, "Corea del Sur": 1680,
-        # Grupos I-L (clasificados por repechaje, por definir)
-        "Por definir - Grupo I (1)": 1600, "Por definir - Grupo I (2)": 1600,
-        "Por definir - Grupo I (3)": 1600, "Por definir - Grupo I (4)": 1600,
-        "Por definir - Grupo J (1)": 1600, "Por definir - Grupo J (2)": 1600,
-        "Por definir - Grupo J (3)": 1600, "Por definir - Grupo J (4)": 1600,
-        "Por definir - Grupo K (1)": 1600, "Por definir - Grupo K (2)": 1600,
-        "Por definir - Grupo K (3)": 1600, "Por definir - Grupo K (4)": 1600,
-        "Por definir - Grupo L (1)": 1600, "Por definir - Grupo L (2)": 1600,
-        "Por definir - Grupo L (3)": 1600, "Por definir - Grupo L (4)": 1600,
+        "Espana":                1810, "Cabo Verde":            1590,
+        "Arabia Saudita":        1620, "Uruguay":               1740,
+        # Grupo I
+        "Francia":               1840, "Senegal":               1700,
+        "Noruega":               1740, "Iraq":                  1590,
+        # Grupo J
+        "Argentina":             1845, "Argelia":               1660,
+        "Austria":               1700, "Jordania":              1580,
+        # Grupo K
+        "Portugal":              1800, "Colombia":              1720,
+        "Uzbekistan":            1620, "DR Congo":              1610,
+        # Grupo L
+        "Inglaterra":            1820, "Croacia":               1760,
+        "Ghana":                 1600, "Panama":                1620,
     },
+}
+
+# ----- 48 EQUIPOS MUNDIAL 2026 (metadata por grupo) -----
+EQUIPOS_MUNDIAL_2026 = {
+    "A": [
+        {"pais": "Mexico",               "iso": "MEX", "conf": "CONCACAF", "anfitrion": True},
+        {"pais": "Sudafrica",            "iso": "RSA", "conf": "CAF"},
+        {"pais": "Corea del Sur",        "iso": "KOR", "conf": "AFC"},
+        {"pais": "Chequia",              "iso": "CZE", "conf": "UEFA"},
+    ],
+    "B": [
+        {"pais": "Canada",               "iso": "CAN", "conf": "CONCACAF", "anfitrion": True},
+        {"pais": "Suiza",                "iso": "SUI", "conf": "UEFA"},
+        {"pais": "Qatar",                "iso": "QAT", "conf": "AFC"},
+        {"pais": "Bosnia y Herzegovina", "iso": "BIH", "conf": "UEFA"},
+    ],
+    "C": [
+        {"pais": "Brasil",               "iso": "BRA", "conf": "CONMEBOL"},
+        {"pais": "Marruecos",            "iso": "MAR", "conf": "CAF"},
+        {"pais": "Haiti",                "iso": "HAI", "conf": "CONCACAF"},
+        {"pais": "Escocia",              "iso": "SCO", "conf": "UEFA"},
+    ],
+    "D": [
+        {"pais": "Estados Unidos",       "iso": "USA", "conf": "CONCACAF", "anfitrion": True},
+        {"pais": "Paraguay",             "iso": "PAR", "conf": "CONMEBOL"},
+        {"pais": "Australia",            "iso": "AUS", "conf": "AFC"},
+        {"pais": "Turquia",              "iso": "TUR", "conf": "UEFA"},
+    ],
+    "E": [
+        {"pais": "Alemania",             "iso": "GER", "conf": "UEFA"},
+        {"pais": "Curazao",              "iso": "CUW", "conf": "CONCACAF"},
+        {"pais": "Costa de Marfil",      "iso": "CIV", "conf": "CAF"},
+        {"pais": "Ecuador",              "iso": "ECU", "conf": "CONMEBOL"},
+    ],
+    "F": [
+        {"pais": "Paises Bajos",         "iso": "NED", "conf": "UEFA"},
+        {"pais": "Japon",                "iso": "JPN", "conf": "AFC"},
+        {"pais": "Tunez",                "iso": "TUN", "conf": "CAF"},
+        {"pais": "Suecia",               "iso": "SWE", "conf": "UEFA"},
+    ],
+    "G": [
+        {"pais": "Belgica",              "iso": "BEL", "conf": "UEFA"},
+        {"pais": "Egipto",               "iso": "EGY", "conf": "CAF"},
+        {"pais": "Iran",                 "iso": "IRN", "conf": "AFC"},
+        {"pais": "Nueva Zelanda",        "iso": "NZL", "conf": "OFC"},
+    ],
+    "H": [
+        {"pais": "Espana",               "iso": "ESP", "conf": "UEFA"},
+        {"pais": "Cabo Verde",           "iso": "CPV", "conf": "CAF"},
+        {"pais": "Arabia Saudita",       "iso": "KSA", "conf": "AFC"},
+        {"pais": "Uruguay",              "iso": "URU", "conf": "CONMEBOL"},
+    ],
+    "I": [
+        {"pais": "Francia",              "iso": "FRA", "conf": "UEFA"},
+        {"pais": "Senegal",              "iso": "SEN", "conf": "CAF"},
+        {"pais": "Noruega",              "iso": "NOR", "conf": "UEFA"},
+        {"pais": "Iraq",                 "iso": "IRQ", "conf": "AFC"},
+    ],
+    "J": [
+        {"pais": "Argentina",            "iso": "ARG", "conf": "CONMEBOL"},
+        {"pais": "Argelia",              "iso": "ALG", "conf": "CAF"},
+        {"pais": "Austria",              "iso": "AUT", "conf": "UEFA"},
+        {"pais": "Jordania",             "iso": "JOR", "conf": "AFC"},
+    ],
+    "K": [
+        {"pais": "Portugal",             "iso": "POR", "conf": "UEFA"},
+        {"pais": "Colombia",             "iso": "COL", "conf": "CONMEBOL"},
+        {"pais": "Uzbekistan",           "iso": "UZB", "conf": "AFC"},
+        {"pais": "DR Congo",             "iso": "COD", "conf": "CAF"},
+    ],
+    "L": [
+        {"pais": "Inglaterra",           "iso": "ENG", "conf": "UEFA"},
+        {"pais": "Croacia",              "iso": "CRO", "conf": "UEFA"},
+        {"pais": "Ghana",                "iso": "GHA", "conf": "CAF"},
+        {"pais": "Panama",               "iso": "PAN", "conf": "CONCACAF"},
+    ],
 }
 
 def fuerza(elo):
