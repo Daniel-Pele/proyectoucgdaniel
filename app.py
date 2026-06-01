@@ -1,8 +1,89 @@
 import streamlit as st
 import math
 import pandas as pd
+import sqlite3
+import hashlib
+import re
+from datetime import datetime
 
+# ================================================================
+# BASE DE DATOS
+# ================================================================
+def init_db():
+    con = sqlite3.connect("users.db")
+    cur = con.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre    TEXT    NOT NULL,
+            correo    TEXT    NOT NULL UNIQUE,
+            password  TEXT    NOT NULL,
+            fecha_reg TEXT    NOT NULL,
+            ultimo_login TEXT
+        )
+    """)
+    con.commit()
+    con.close()
+
+def hash_password(pw):
+    return hashlib.sha256(pw.encode()).hexdigest()
+
+def registrar_usuario(nombre, correo, password):
+    try:
+        con = sqlite3.connect("users.db")
+        cur = con.cursor()
+        cur.execute(
+            "INSERT INTO usuarios (nombre, correo, password, fecha_reg) VALUES (?,?,?,?)",
+            (nombre, correo, hash_password(password), datetime.now().strftime("%Y-%m-%d %H:%M"))
+        )
+        con.commit()
+        con.close()
+        return True, "Registro exitoso."
+    except sqlite3.IntegrityError:
+        return False, "Ese correo ya esta registrado."
+
+def login_usuario(correo, password):
+    con = sqlite3.connect("users.db")
+    cur = con.cursor()
+    cur.execute("SELECT id, nombre FROM usuarios WHERE correo=? AND password=?",
+                (correo, hash_password(password)))
+    fila = cur.fetchone()
+    if fila:
+        cur.execute("UPDATE usuarios SET ultimo_login=? WHERE id=?",
+                    (datetime.now().strftime("%Y-%m-%d %H:%M"), fila[0]))
+        con.commit()
+    con.close()
+    return fila
+
+def obtener_usuarios():
+    con = sqlite3.connect("users.db")
+    df = pd.read_sql_query(
+        "SELECT nombre, correo, fecha_reg, ultimo_login FROM usuarios ORDER BY fecha_reg DESC",
+        con
+    )
+    con.close()
+    return df
+
+def total_usuarios():
+    con = sqlite3.connect("users.db")
+    cur = con.cursor()
+    cur.execute("SELECT COUNT(*) FROM usuarios")
+    n = cur.fetchone()[0]
+    con.close()
+    return n
+
+# ================================================================
+# CREDENCIALES DE ADMIN (cambiar antes de desplegar)
+# ================================================================
+ADMIN_CORREO   = "admin@pronosticos.com"
+ADMIN_PASSWORD = "Admin2026!"
+
+# ================================================================
+# CONFIGURACION
+# ================================================================
 st.set_page_config(page_title="Proyecto Final - Modelo Hibrido", layout="wide")
+
+init_db()
 
 # ----- TEMA OSCURO + DORADO -----
 st.markdown(
@@ -29,9 +110,137 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("Proyecto Final")
-st.subheader("Modelo Hibrido de Pronosticos Deportivos")
-st.caption("Elo - Dixon-Coles (Poisson) - Ensamblado")
+# ================================================================
+# HEADER: titulo izquierda | auth derecha
+# ================================================================
+if "usuario_id"  not in st.session_state: st.session_state.usuario_id   = None
+if "usuario_nom" not in st.session_state: st.session_state.usuario_nom  = None
+if "es_admin"    not in st.session_state: st.session_state.es_admin     = False
+if "vista_auth"  not in st.session_state: st.session_state.vista_auth   = None  # "login" | "registro"
+
+col_titulo, col_auth = st.columns([3, 1])
+
+with col_titulo:
+    st.title("Proyecto Final")
+    st.subheader("Modelo Hibrido de Pronosticos Deportivos")
+    st.caption("Elo - Dixon-Coles (Poisson) - Ensamblado")
+
+with col_auth:
+    if st.session_state.usuario_id is None:
+        b1, b2 = st.columns(2)
+        if b1.button("Iniciar sesion"):
+            st.session_state.vista_auth = "login"
+        if b2.button("Registrarse"):
+            st.session_state.vista_auth = "registro"
+    else:
+        st.markdown(f"**{st.session_state.usuario_nom}**")
+        if st.session_state.es_admin:
+            st.caption("Administrador")
+        if st.button("Cerrar sesion"):
+            st.session_state.usuario_id  = None
+            st.session_state.usuario_nom = None
+            st.session_state.es_admin    = False
+            st.session_state.vista_auth  = None
+            st.rerun()
+
+# ================================================================
+# PANEL DE LOGIN
+# ================================================================
+if st.session_state.vista_auth == "login" and st.session_state.usuario_id is None:
+    st.markdown("---")
+    st.markdown("### Iniciar sesion")
+    with st.form("form_login"):
+        correo_l   = st.text_input("Correo electronico")
+        password_l = st.text_input("Contrasena", type="password")
+        submit_l   = st.form_submit_button("Entrar")
+
+    if submit_l:
+        if correo_l == ADMIN_CORREO and password_l == ADMIN_PASSWORD:
+            st.session_state.usuario_id  = 0
+            st.session_state.usuario_nom = "Administrador"
+            st.session_state.es_admin    = True
+            st.session_state.vista_auth  = None
+            st.success("Bienvenido, Administrador.")
+            st.rerun()
+        else:
+            fila = login_usuario(correo_l, password_l)
+            if fila:
+                st.session_state.usuario_id  = fila[0]
+                st.session_state.usuario_nom = fila[1]
+                st.session_state.es_admin    = False
+                st.session_state.vista_auth  = None
+                st.success(f"Bienvenido, {fila[1]}.")
+                st.rerun()
+            else:
+                st.error("Correo o contrasena incorrectos.")
+    st.stop()
+
+# ================================================================
+# PANEL DE REGISTRO
+# ================================================================
+if st.session_state.vista_auth == "registro" and st.session_state.usuario_id is None:
+    st.markdown("---")
+    st.markdown("### Crear cuenta")
+    with st.form("form_registro"):
+        nombre_r   = st.text_input("Nombre completo")
+        correo_r   = st.text_input("Correo electronico")
+        password_r = st.text_input("Contrasena", type="password")
+        password_r2= st.text_input("Confirmar contrasena", type="password")
+        submit_r   = st.form_submit_button("Registrarse")
+
+    if submit_r:
+        if not nombre_r or not correo_r or not password_r:
+            st.error("Completa todos los campos.")
+        elif not re.match(r"[^@]+@[^@]+\.[^@]+", correo_r):
+            st.error("Correo invalido.")
+        elif len(password_r) < 6:
+            st.error("La contrasena debe tener al menos 6 caracteres.")
+        elif password_r != password_r2:
+            st.error("Las contrasenas no coinciden.")
+        else:
+            ok, msg = registrar_usuario(nombre_r, correo_r, password_r)
+            if ok:
+                st.success(msg + " Ya puedes iniciar sesion.")
+                st.session_state.vista_auth = "login"
+                st.rerun()
+            else:
+                st.error(msg)
+    st.stop()
+
+# ================================================================
+# PANEL DE ADMINISTRADOR
+# ================================================================
+if st.session_state.es_admin:
+    st.markdown("---")
+    st.markdown("## Panel de Administrador")
+
+    total = total_usuarios()
+    df_u  = obtener_usuarios()
+
+    m1, m2 = st.columns(2)
+    m1.metric("Total de usuarios registrados", total)
+    m2.metric("Ultimo registro",
+              df_u["fecha_reg"].iloc[0] if not df_u.empty else "Sin registros")
+
+    st.markdown("### Lista de usuarios")
+    if df_u.empty:
+        st.info("No hay usuarios registrados aun.")
+    else:
+        df_u.columns = ["Nombre", "Correo", "Fecha de registro", "Ultimo login"]
+        st.dataframe(df_u, hide_index=True, use_container_width=True)
+    st.stop()
+
+# ================================================================
+# ACCESO RESTRINGIDO
+# ================================================================
+if st.session_state.usuario_id is None:
+    st.markdown("---")
+    st.info("Inicia sesion o registrate para acceder al pronosticador.")
+    st.stop()
+
+# ================================================================
+# APLICACION PRINCIPAL (solo usuarios autenticados)
+# ================================================================
 
 # ----- BASE DE EQUIPOS POR LIGA (Elo referencial) -----
 LIGAS = {
@@ -111,41 +320,30 @@ LIGAS = {
     },
     "Copa Mundial 2026": {
         # Grupo A
-        "Mexico":                1710, "Sudafrica":             1580,
-        "Corea del Sur":         1680, "Chequia":               1670,
+        "Qatar": 1590, "Ecuador": 1620, "Senegal": 1700, "Paises Bajos": 1780,
         # Grupo B
-        "Canada":                1660, "Suiza":                 1720,
-        "Qatar":                 1590, "Bosnia y Herzegovina":  1640,
+        "Inglaterra": 1820, "Iran": 1640, "EE.UU.": 1700, "Gales": 1660,
         # Grupo C
-        "Brasil":                1850, "Marruecos":             1710,
-        "Haiti":                 1530, "Escocia":               1680,
+        "Argentina": 1845, "Arabia Saudita": 1620, "Mexico": 1710, "Polonia": 1680,
         # Grupo D
-        "Estados Unidos":        1700, "Paraguay":              1650,
-        "Australia":             1650, "Turquia":               1690,
+        "Francia": 1840, "Australia": 1650, "Dinamarca": 1730, "Tunez": 1620,
         # Grupo E
-        "Alemania":              1790, "Curazao":               1530,
-        "Costa de Marfil":       1680, "Ecuador":               1620,
+        "Espana": 1810, "Costa Rica": 1600, "Alemania": 1790, "Japon": 1700,
         # Grupo F
-        "Paises Bajos":          1780, "Japon":                 1700,
-        "Tunez":                 1620, "Suecia":                1720,
+        "Belgica": 1780, "Canada": 1660, "Marruecos": 1710, "Croacia": 1760,
         # Grupo G
-        "Belgica":               1780, "Egipto":                1650,
-        "Iran":                  1640, "Nueva Zelanda":         1580,
+        "Brasil": 1850, "Serbia": 1680, "Suiza": 1720, "Camerun": 1610,
         # Grupo H
-        "Espana":                1810, "Cabo Verde":            1590,
-        "Arabia Saudita":        1620, "Uruguay":               1740,
-        # Grupo I
-        "Francia":               1840, "Senegal":               1700,
-        "Noruega":               1740, "Iraq":                  1590,
-        # Grupo J
-        "Argentina":             1845, "Argelia":               1660,
-        "Austria":               1700, "Jordania":              1580,
-        # Grupo K
-        "Portugal":              1800, "Colombia":              1720,
-        "Uzbekistan":            1620, "DR Congo":              1610,
-        # Grupo L
-        "Inglaterra":            1820, "Croacia":               1760,
-        "Ghana":                 1600, "Panama":                1620,
+        "Portugal": 1800, "Ghana": 1600, "Uruguay": 1740, "Corea del Sur": 1680,
+        # Grupos I-L (clasificados por repechaje, por definir)
+        "Por definir - Grupo I (1)": 1600, "Por definir - Grupo I (2)": 1600,
+        "Por definir - Grupo I (3)": 1600, "Por definir - Grupo I (4)": 1600,
+        "Por definir - Grupo J (1)": 1600, "Por definir - Grupo J (2)": 1600,
+        "Por definir - Grupo J (3)": 1600, "Por definir - Grupo J (4)": 1600,
+        "Por definir - Grupo K (1)": 1600, "Por definir - Grupo K (2)": 1600,
+        "Por definir - Grupo K (3)": 1600, "Por definir - Grupo K (4)": 1600,
+        "Por definir - Grupo L (1)": 1600, "Por definir - Grupo L (2)": 1600,
+        "Por definir - Grupo L (3)": 1600, "Por definir - Grupo L (4)": 1600,
     },
 }
 
@@ -224,6 +422,22 @@ EQUIPOS_MUNDIAL_2026 = {
         {"pais": "Panama",               "iso": "PAN", "conf": "CONCACAF"},
     ],
 }
+
+# Extender Copa Mundial 2026 con equipos reales de los grupos I-L y nuevos seleccionados
+LIGAS["Copa Mundial 2026"].update({
+    "Sudafrica":            1580, "Chequia":               1670,
+    "Bosnia y Herzegovina": 1640, "Haiti":                 1530,
+    "Escocia":              1680, "Estados Unidos":        1700,
+    "Paraguay":             1650, "Turquia":               1690,
+    "Curazao":              1530, "Costa de Marfil":       1680,
+    "Suecia":               1720, "Egipto":                1650,
+    "Nueva Zelanda":        1580, "Cabo Verde":            1590,
+    "Noruega":              1740, "Iraq":                  1590,
+    "Argelia":              1660, "Austria":               1700,
+    "Jordania":             1580, "Colombia":              1720,
+    "Uzbekistan":           1620, "DR Congo":              1610,
+    "Panama":               1620,
+})
 
 def fuerza(elo):
     s = (elo - 1500.0) / 500.0
