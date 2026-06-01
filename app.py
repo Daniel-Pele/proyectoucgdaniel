@@ -34,8 +34,6 @@ st.subheader("Modelo Hibrido de Pronosticos Deportivos")
 st.caption("Elo - Dixon-Coles (Poisson) - Ensamblado")
 
 # ----- BASE DE EQUIPOS POR LIGA (Elo referencial) -----
-# Los valores Elo son referenciales (escala tipo ClubElo) y son editables
-# en pantalla. Los goles esperados se derivan del Elo de cada equipo.
 LIGAS = {
     "LigaPro Ecuador": {
         "Independiente del Valle": 1720, "LDU Quito": 1700,
@@ -111,19 +109,43 @@ LIGAS = {
         "Rosario Central": 1670, "Newells": 1650, "Gimnasia LP": 1640,
         "Banfield": 1640,
     },
+    "Copa Mundial 2026": {
+        # Grupo A
+        "Qatar": 1590, "Ecuador": 1620, "Senegal": 1700, "Paises Bajos": 1780,
+        # Grupo B
+        "Inglaterra": 1820, "Iran": 1640, "EE.UU.": 1700, "Gales": 1660,
+        # Grupo C
+        "Argentina": 1845, "Arabia Saudita": 1620, "Mexico": 1710, "Polonia": 1680,
+        # Grupo D
+        "Francia": 1840, "Australia": 1650, "Dinamarca": 1730, "Tunez": 1620,
+        # Grupo E
+        "Espana": 1810, "Costa Rica": 1600, "Alemania": 1790, "Japon": 1700,
+        # Grupo F
+        "Belgica": 1780, "Canada": 1660, "Marruecos": 1710, "Croacia": 1760,
+        # Grupo G
+        "Brasil": 1850, "Serbia": 1680, "Suiza": 1720, "Camerun": 1610,
+        # Grupo H
+        "Portugal": 1800, "Ghana": 1600, "Uruguay": 1740, "Corea del Sur": 1680,
+        # Grupos I-L (clasificados por repechaje, por definir)
+        "Por definir - Grupo I (1)": 1600, "Por definir - Grupo I (2)": 1600,
+        "Por definir - Grupo I (3)": 1600, "Por definir - Grupo I (4)": 1600,
+        "Por definir - Grupo J (1)": 1600, "Por definir - Grupo J (2)": 1600,
+        "Por definir - Grupo J (3)": 1600, "Por definir - Grupo J (4)": 1600,
+        "Por definir - Grupo K (1)": 1600, "Por definir - Grupo K (2)": 1600,
+        "Por definir - Grupo K (3)": 1600, "Por definir - Grupo K (4)": 1600,
+        "Por definir - Grupo L (1)": 1600, "Por definir - Grupo L (2)": 1600,
+        "Por definir - Grupo L (3)": 1600, "Por definir - Grupo L (4)": 1600,
+    },
 }
 
 def fuerza(elo):
-    # Normaliza el Elo a un indice 0..1 (1500 = flojo, 2000 = top)
     s = (elo - 1500.0) / 500.0
     return max(0.0, min(1.0, s))
 
 def goles_favor(elo):
-    # Mas Elo -> marca mas (rango aprox 0.7 a 1.6) - partidos mas cerrados
     return round(0.7 + 0.9 * fuerza(elo), 2)
 
 def goles_contra(elo):
-    # Mas Elo -> recibe menos (rango aprox 1.4 a 0.7)
     return round(1.4 - 0.7 * fuerza(elo), 2)
 
 # ----- MENU LATERAL: PARAMETROS -----
@@ -135,13 +157,6 @@ equipos_liga = list(LIGAS[liga].keys())
 equipo_local = st.sidebar.selectbox("EQUIPO LOCAL", equipos_liga, index=0)
 equipo_visit = st.sidebar.selectbox("EQUIPO VISITANTE", equipos_liga, index=1)
 
-fecha = st.sidebar.text_input("FECHA (dd/mm/aaaa)", value="17/05/2026")
-horas_disponibles = [
-    "12:00", "13:00", "14:00", "15:00", "15:30", "16:00", "16:30",
-    "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00",
-    "20:30", "21:00", "21:30", "22:00",
-]
-hora = st.sidebar.selectbox("HORA DEL PARTIDO", horas_disponibles, index=9)
 st.sidebar.markdown("---")
 analizar = st.sidebar.button("ANALIZAR")
 
@@ -154,11 +169,10 @@ if equipo_local == equipo_visit:
 elo_l_base = float(LIGAS[liga][equipo_local])
 elo_v_base = float(LIGAS[liga][equipo_visit])
 
-# Goles esperados del partido segun fuerza de cada equipo
 gf_l, gc_l = goles_favor(elo_l_base), goles_contra(elo_l_base)
 gf_v, gc_v = goles_favor(elo_v_base), goles_contra(elo_v_base)
-lam_base = round((gf_l + gc_v) / 2.0 * 1.05, 2)   # ataque local + factor localia
-mu_base = round((gf_v + gc_l) / 2.0 * 0.88, 2)    # ataque visitante
+lam_base = round((gf_l + gc_v) / 2.0 * 1.05, 2)
+mu_base = round((gf_v + gc_l) / 2.0 * 0.88, 2)
 
 st.markdown("### 1. Datos de los equipos (autollenados desde la liga, editables)")
 c1, c2 = st.columns(2)
@@ -300,7 +314,7 @@ if analizar and equipo_local != equipo_visit:
 
     st.markdown("---")
     st.markdown(f"## Analisis: {partido}")
-    st.write(f"**Liga:** {liga}  |  **Fecha:** {fecha}  |  **Hora:** {hora}")
+    st.write(f"**Liga:** {liga}")
 
     p_loc = probs[("Resultado 1X2", "Local")]
     p_emp = probs[("Resultado 1X2", "Empate")]
