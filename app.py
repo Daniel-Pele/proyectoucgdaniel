@@ -53,8 +53,8 @@ def cambiar_plan(usuario_id, nuevo_plan):
     db = get_supabase()
     db.table("usuarios").update({"plan": nuevo_plan, "pronosticos_hoy": 0}).eq("id", usuario_id).execute()
 
-LIMITES = {"gratis": 3, "basic": 20, "pro": 999999}
-WHATSAPP = "https://wa.me/593XXXXXXXXX?text=Hola,%20quiero%20suscribirme%20al%20plan%20de%20pronosticos"
+LIMITES = {"gratis": 3, "basic": 5, "pro": 999999}
+WHATSAPP = "https://wa.me/593993299554?text=Hola,%20quiero%20suscribirme%20al%20plan%20de%20pronosticos"
 
 def verificar_limite():
     uid  = st.session_state.get("usuario_id")
@@ -599,7 +599,7 @@ if analizar and equipo_local != equipo_visit and not verificar_limite():
     st.warning(f"Tienes el plan **{plan_actual.upper()}** ({limite_actual} pronosticos/dia).")
     st.markdown(f"### Quieres mas pronosticos?")
     col1, col2 = st.columns(2)
-    col1.markdown("**Plan Basic — $5/mes**\n- 20 pronosticos por dia")
+    col1.markdown("**Plan Basic — $5/mes**\n- 5 pronosticos por dia")
     col2.markdown("**Plan Pro — $10/mes**\n- Pronosticos ilimitados")
     st.link_button("Contactar por WhatsApp para suscribirte", WHATSAPP)
     st.stop()
