@@ -1,76 +1,57 @@
 import streamlit as st
 import math
 import pandas as pd
-import sqlite3
 import hashlib
 import re
 from datetime import datetime
+from supabase import create_client, Client
 
 # ================================================================
-# BASE DE DATOS
+# BASE DE DATOS (Supabase - persiste en Streamlit Cloud)
 # ================================================================
-def init_db():
-    con = sqlite3.connect("users.db")
-    cur = con.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id        INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre    TEXT    NOT NULL,
-            correo    TEXT    NOT NULL UNIQUE,
-            password  TEXT    NOT NULL,
-            fecha_reg TEXT    NOT NULL,
-            ultimo_login TEXT
-        )
-    """)
-    con.commit()
-    con.close()
+@st.cache_resource
+def get_supabase() -> Client:
+    return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
 def hash_password(pw):
     return hashlib.sha256(pw.encode()).hexdigest()
 
 def registrar_usuario(nombre, correo, password):
     try:
-        con = sqlite3.connect("users.db")
-        cur = con.cursor()
-        cur.execute(
-            "INSERT INTO usuarios (nombre, correo, password, fecha_reg) VALUES (?,?,?,?)",
-            (nombre, correo, hash_password(password), datetime.now().strftime("%Y-%m-%d %H:%M"))
-        )
-        con.commit()
-        con.close()
+        db = get_supabase()
+        db.table("usuarios").insert({
+            "nombre": nombre,
+            "correo": correo,
+            "password": hash_password(password),
+            "fecha_reg": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        }).execute()
         return True, "Registro exitoso."
-    except sqlite3.IntegrityError:
-        return False, "Ese correo ya esta registrado."
+    except Exception as e:
+        if "duplicate" in str(e).lower() or "unique" in str(e).lower():
+            return False, "Ese correo ya esta registrado."
+        return False, f"Error al registrar: {e}"
 
 def login_usuario(correo, password):
-    con = sqlite3.connect("users.db")
-    cur = con.cursor()
-    cur.execute("SELECT id, nombre FROM usuarios WHERE correo=? AND password=?",
-                (correo, hash_password(password)))
-    fila = cur.fetchone()
-    if fila:
-        cur.execute("UPDATE usuarios SET ultimo_login=? WHERE id=?",
-                    (datetime.now().strftime("%Y-%m-%d %H:%M"), fila[0]))
-        con.commit()
-    con.close()
-    return fila
+    db = get_supabase()
+    res = db.table("usuarios").select("id, nombre").eq("correo", correo).eq("password", hash_password(password)).execute()
+    if res.data:
+        fila = res.data[0]
+        db.table("usuarios").update({"ultimo_login": datetime.now().strftime("%Y-%m-%d %H:%M")}).eq("id", fila["id"]).execute()
+        return (fila["id"], fila["nombre"])
+    return None
 
 def obtener_usuarios():
-    con = sqlite3.connect("users.db")
-    df = pd.read_sql_query(
-        "SELECT nombre, correo, fecha_reg, ultimo_login FROM usuarios ORDER BY fecha_reg DESC",
-        con
-    )
-    con.close()
-    return df
+    db = get_supabase()
+    res = db.table("usuarios").select("nombre, correo, fecha_reg, ultimo_login").order("fecha_reg", desc=True).execute()
+    return pd.DataFrame(res.data)
 
 def total_usuarios():
-    con = sqlite3.connect("users.db")
-    cur = con.cursor()
-    cur.execute("SELECT COUNT(*) FROM usuarios")
-    n = cur.fetchone()[0]
-    con.close()
-    return n
+    db = get_supabase()
+    res = db.table("usuarios").select("id", count="exact").execute()
+    return res.count or 0
+
+def init_db():
+    pass
 
 # ================================================================
 # CREDENCIALES DE ADMIN (cambiar antes de desplegar)
