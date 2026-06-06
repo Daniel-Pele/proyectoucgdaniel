@@ -32,22 +32,64 @@ def registrar_usuario(nombre, correo, password):
 
 def login_usuario(correo, password):
     db = get_supabase()
-    res = db.table("usuarios").select("id, nombre").eq("correo", correo).eq("password", hash_password(password)).execute()
+    res = db.table("usuarios").select("id, nombre, plan, pronosticos_hoy, fecha_ultimo_uso").eq("correo", correo).eq("password", hash_password(password)).execute()
     if res.data:
         fila = res.data[0]
         db.table("usuarios").update({"ultimo_login": datetime.now().strftime("%Y-%m-%d %H:%M")}).eq("id", fila["id"]).execute()
-        return (fila["id"], fila["nombre"])
+        return fila
     return None
 
 def obtener_usuarios():
     db = get_supabase()
-    res = db.table("usuarios").select("nombre, correo, fecha_reg, ultimo_login").order("fecha_reg", desc=True).execute()
+    res = db.table("usuarios").select("id, nombre, correo, plan, pronosticos_hoy, fecha_reg, ultimo_login").order("fecha_reg", desc=True).execute()
     return pd.DataFrame(res.data)
 
 def total_usuarios():
     db = get_supabase()
     res = db.table("usuarios").select("id", count="exact").execute()
     return res.count or 0
+
+def cambiar_plan(usuario_id, nuevo_plan):
+    db = get_supabase()
+    db.table("usuarios").update({"plan": nuevo_plan, "pronosticos_hoy": 0}).eq("id", usuario_id).execute()
+
+LIMITES = {"gratis": 3, "basic": 20, "pro": 999999}
+WHATSAPP = "https://wa.me/593XXXXXXXXX?text=Hola,%20quiero%20suscribirme%20al%20plan%20de%20pronosticos"
+
+def verificar_limite():
+    uid  = st.session_state.get("usuario_id")
+    plan = st.session_state.get("usuario_plan", "gratis")
+    if uid == 0:
+        return True
+    hoy  = datetime.now().strftime("%Y-%m-%d")
+    db   = get_supabase()
+    res  = db.table("usuarios").select("pronosticos_hoy, fecha_ultimo_uso, plan").eq("id", uid).execute()
+    if not res.data:
+        return False
+    datos = res.data[0]
+    plan  = datos.get("plan", "gratis")
+    st.session_state["usuario_plan"] = plan
+    limite = LIMITES.get(plan, 3)
+    if datos.get("fecha_ultimo_uso") != hoy:
+        db.table("usuarios").update({"pronosticos_hoy": 0, "fecha_ultimo_uso": hoy}).eq("id", uid).execute()
+        return True
+    usado = datos.get("pronosticos_hoy", 0)
+    return usado < limite
+
+def registrar_pronostico():
+    uid = st.session_state.get("usuario_id")
+    if uid == 0:
+        return
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    db  = get_supabase()
+    res = db.table("usuarios").select("pronosticos_hoy, fecha_ultimo_uso").eq("id", uid).execute()
+    if res.data:
+        datos = res.data[0]
+        if datos.get("fecha_ultimo_uso") != hoy:
+            db.table("usuarios").update({"pronosticos_hoy": 1, "fecha_ultimo_uso": hoy}).eq("id", uid).execute()
+        else:
+            nuevo = (datos.get("pronosticos_hoy") or 0) + 1
+            db.table("usuarios").update({"pronosticos_hoy": nuevo}).eq("id", uid).execute()
 
 # ================================================================
 # CREDENCIALES DE ADMIN (cambiar antes de desplegar)
@@ -88,10 +130,11 @@ st.markdown(
 # ================================================================
 # HEADER: titulo izquierda | auth derecha
 # ================================================================
-if "usuario_id"  not in st.session_state: st.session_state.usuario_id   = None
-if "usuario_nom" not in st.session_state: st.session_state.usuario_nom  = None
-if "es_admin"    not in st.session_state: st.session_state.es_admin     = False
-if "vista_auth"  not in st.session_state: st.session_state.vista_auth   = None
+if "usuario_id"   not in st.session_state: st.session_state.usuario_id   = None
+if "usuario_nom"  not in st.session_state: st.session_state.usuario_nom  = None
+if "usuario_plan" not in st.session_state: st.session_state.usuario_plan = "gratis"
+if "es_admin"     not in st.session_state: st.session_state.es_admin     = False
+if "vista_auth"   not in st.session_state: st.session_state.vista_auth   = None
 
 col_titulo, col_auth = st.columns([3, 1])
 
@@ -140,11 +183,12 @@ if st.session_state.vista_auth == "login" and st.session_state.usuario_id is Non
         else:
             fila = login_usuario(correo_l, password_l)
             if fila:
-                st.session_state.usuario_id  = fila[0]
-                st.session_state.usuario_nom = fila[1]
-                st.session_state.es_admin    = False
-                st.session_state.vista_auth  = None
-                st.success(f"Bienvenido, {fila[1]}.")
+                st.session_state.usuario_id   = fila["id"]
+                st.session_state.usuario_nom  = fila["nombre"]
+                st.session_state.usuario_plan = fila.get("plan", "gratis")
+                st.session_state.es_admin     = False
+                st.session_state.vista_auth   = None
+                st.success(f"Bienvenido, {fila['nombre']}.")
                 st.rerun()
             else:
                 st.error("Correo o contrasena incorrectos.")
@@ -197,12 +241,26 @@ if st.session_state.es_admin:
     m2.metric("Ultimo registro",
               df_u["fecha_reg"].iloc[0] if not df_u.empty else "Sin registros")
 
-    st.markdown("### Lista de usuarios")
+    st.markdown("### Lista de usuarios y planes")
     if df_u.empty:
         st.info("No hay usuarios registrados aun.")
     else:
-        df_u.columns = ["Nombre", "Correo", "Fecha de registro", "Ultimo login"]
-        st.dataframe(df_u, hide_index=True, use_container_width=True)
+        for _, row in df_u.iterrows():
+            c1, c2, c3, c4 = st.columns([3, 2, 2, 2])
+            c1.write(f"**{row['nombre']}** — {row['correo']}")
+            c2.write(f"Plan: `{row.get('plan','gratis')}`")
+            c3.write(f"Usos hoy: {row.get('pronosticos_hoy', 0)}")
+            nuevo_plan = c4.selectbox(
+                "Cambiar",
+                ["gratis", "basic", "pro"],
+                index=["gratis","basic","pro"].index(row.get("plan","gratis")),
+                key=f"plan_{row['id']}"
+            )
+            if nuevo_plan != row.get("plan", "gratis"):
+                cambiar_plan(row["id"], nuevo_plan)
+                st.success(f"Plan de {row['nombre']} cambiado a {nuevo_plan}")
+                st.rerun()
+            st.markdown("---")
     st.stop()
 
 # ================================================================
@@ -531,6 +589,21 @@ def calcular_probabilidades(elo_l, elo_v, vent, lam, mu, rho, tarjetas):
         ("Marcadores mas probables", f"Top 3: {top3[2][0]}"):   top3[2][1],
     }
 
+plan_actual = st.session_state.get("usuario_plan", "gratis")
+limite_actual = LIMITES.get(plan_actual, 3)
+if plan_actual != "pro":
+    st.sidebar.info(f"Plan {plan_actual.upper()} — {limite_actual} pronosticos/dia")
+
+if analizar and equipo_local != equipo_visit and not verificar_limite():
+    st.error("Has alcanzado tu limite diario de pronosticos.")
+    st.warning(f"Tienes el plan **{plan_actual.upper()}** ({limite_actual} pronosticos/dia).")
+    st.markdown(f"### Quieres mas pronosticos?")
+    col1, col2 = st.columns(2)
+    col1.markdown("**Plan Basic — $5/mes**\n- 20 pronosticos por dia")
+    col2.markdown("**Plan Pro — $10/mes**\n- Pronosticos ilimitados")
+    st.link_button("Contactar por WhatsApp para suscribirte", WHATSAPP)
+    st.stop()
+
 if analizar and equipo_local != equipo_visit:
     probs = calcular_probabilidades(
         elo_local, elo_visit, ventaja, goles_local, goles_visit, rho, tarjetas_esp
@@ -568,6 +641,7 @@ if analizar and equipo_local != equipo_visit:
     )
     st.success(f"Resultado mas probable: {favorito[0]} ({favorito[1] * 100:.1f}%)")
 
+    registrar_pronostico()
     st.markdown("### Cuadro final consolidado (todas las opciones)")
     st.dataframe(resultado, hide_index=True, use_container_width=True)
 else:
