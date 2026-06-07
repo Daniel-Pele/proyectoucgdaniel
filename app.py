@@ -151,7 +151,8 @@ if "vista_auth"   not in st.session_state: st.session_state.vista_auth   = None
 # PORTADA PRINCIPAL
 # ================================================================
 if st.session_state.usuario_id is None:
-    st.markdown("""
+    import streamlit.components.v1 as components
+    components.html("""<!DOCTYPE html><html><body style="margin:0;padding:0;background:transparent;">
     <div style="
         background: linear-gradient(135deg, #0E1A2B 0%, #16263D 50%, #0E1A2B 100%);
         border: 2px solid #F5C518;
@@ -216,8 +217,7 @@ if st.session_state.usuario_id is None:
         ">
             &#128200; Analisis estadistico avanzado para tus apuestas deportivas
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+    </div></body></html>""", height=320, scrolling=False)
 
     b1, b2, b3 = st.columns([2, 1, 1])
     with b2:
