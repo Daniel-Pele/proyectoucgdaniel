@@ -110,9 +110,20 @@ st.markdown(
     section[data-testid="stSidebar"] { background-color: #16263D; }
     h1, h2, h3, h4, h5, h6 { color: #F5C518 !important; }
     .stApp label, .stApp p, .stMarkdown { color: #FFFFFF !important; }
-    .stButton button {
-        background-color: #F5C518; color: #0E1A2B;
-        font-weight: bold; border: none; width: 100%;
+    .stButton button, .stFormSubmitButton button {
+        background-color: #F5C518 !important; color: #0E1A2B !important;
+        font-weight: bold !important; border: none !important; width: 100% !important;
+        border-radius: 8px !important; font-size: 16px !important;
+        padding: 10px !important; cursor: pointer !important;
+    }
+    .stButton button:hover, .stFormSubmitButton button:hover {
+        background-color: #d4a800 !important; color: #0E1A2B !important;
+    }
+    .stLinkButton a {
+        background-color: #25D366 !important; color: #FFFFFF !important;
+        font-weight: bold !important; border-radius: 8px !important;
+        padding: 10px 20px !important; text-decoration: none !important;
+        display: block !important; text-align: center !important;
     }
     input, textarea { color: #0E1A2B !important; }
     [data-baseweb="select"] * { color: #0E1A2B !important; }
