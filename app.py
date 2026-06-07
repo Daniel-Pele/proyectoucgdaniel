@@ -151,9 +151,20 @@ if "vista_auth"   not in st.session_state: st.session_state.vista_auth   = None
 # PORTADA PRINCIPAL
 # ================================================================
 if st.session_state.usuario_id is None:
+    import os
     col_img = st.columns([1, 3, 1])
     with col_img[1]:
-        st.image("logo.jpeg", use_container_width=True)
+        for nombre in ["logo.png", "logo.jpeg", "logo.jpg"]:
+            if os.path.exists(nombre) and os.path.getsize(nombre) > 0:
+                st.image(nombre, use_container_width=True)
+                break
+        else:
+            st.markdown("""
+            <div style="text-align:center; padding:40px; border:2px solid #F5C518; border-radius:20px; background:#16263D;">
+                <div style="font-size:40px; font-weight:900; color:#F5C518;">FUTBOL 1, 2, 3...</div>
+                <div style="font-size:22px; color:#FFFFFF; margin:10px 0;">MODELO HIBRIDO DE PRONOSTICOS DEPORTIVOS</div>
+                <div style="font-size:14px; color:#AAAAAA;">Elo &bull; Dixon-Coles (Poisson) &bull; Ensamblado</div>
+            </div>""", unsafe_allow_html=True)
 
     b1, b2, b3 = st.columns([2, 1, 1])
     with b2:
