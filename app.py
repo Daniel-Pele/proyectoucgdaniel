@@ -151,73 +151,9 @@ if "vista_auth"   not in st.session_state: st.session_state.vista_auth   = None
 # PORTADA PRINCIPAL
 # ================================================================
 if st.session_state.usuario_id is None:
-    import streamlit.components.v1 as components
-    components.html("""<!DOCTYPE html><html><body style="margin:0;padding:0;background:transparent;">
-    <div style="
-        background: linear-gradient(135deg, #0E1A2B 0%, #16263D 50%, #0E1A2B 100%);
-        border: 2px solid #F5C518;
-        border-radius: 20px;
-        padding: 40px 30px;
-        text-align: center;
-        margin-bottom: 20px;
-        position: relative;
-        overflow: hidden;
-    ">
-        <div style="
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background: radial-gradient(circle at 70% 50%, rgba(245,197,24,0.08) 0%, transparent 60%);
-        "></div>
-
-        <div style="display: flex; align-items: center; justify-content: center; gap: 30px; flex-wrap: wrap;">
-            <div style="text-align: left; flex: 1; min-width: 250px;">
-                <div style="font-size: 13px; color: #F5C518; letter-spacing: 3px; font-weight: bold; margin-bottom: 8px;">
-                    FUTBOL 1, 2, 3...
-                </div>
-                <div style="font-size: 36px; font-weight: 900; color: #FFFFFF; line-height: 1.1; margin-bottom: 10px;">
-                    MODELO HIBRIDO<br>DE PRONOSTICOS<br>
-                    <span style="color: #F5C518;">DEPORTIVOS</span>
-                </div>
-                <div style="font-size: 14px; color: #AAAAAA; margin-bottom: 20px;">
-                    Elo &nbsp;&#9679;&nbsp; Dixon-Coles (Poisson) &nbsp;&#9679;&nbsp; Ensamblado
-                </div>
-                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    <div style="border-left: 3px solid #F5C518; padding-left: 10px;">
-                        <div style="font-size: 11px; color: #F5C518; font-weight: bold;">PRECISION</div>
-                        <div style="font-size: 11px; color: #AAAAAA;">IMPULSADA POR IA</div>
-                    </div>
-                    <div style="border-left: 3px solid #F5C518; padding-left: 10px;">
-                        <div style="font-size: 11px; color: #F5C518; font-weight: bold;">COBERTURA</div>
-                        <div style="font-size: 11px; color: #AAAAAA;">GLOBAL DE LIGAS</div>
-                    </div>
-                </div>
-            </div>
-
-            <div style="
-                width: 160px; height: 160px;
-                border-radius: 50%;
-                border: 4px solid #F5C518;
-                background: linear-gradient(135deg, #16263D, #0E1A2B);
-                display: flex; flex-direction: column;
-                align-items: center; justify-content: center;
-                box-shadow: 0 0 30px rgba(245,197,24,0.3);
-                flex-shrink: 0;
-            ">
-                <div style="font-size: 11px; color: #F5C518; font-weight: bold; letter-spacing: 2px;">FUTBOL</div>
-                <div style="font-size: 50px;">&#9917;</div>
-                <div style="font-size: 22px; color: #F5C518; font-weight: bold;">1 2 3</div>
-                <div style="font-size: 9px; color: #AAAAAA; letter-spacing: 2px;">PRONOSTICOS</div>
-            </div>
-        </div>
-
-        <div style="
-            margin-top: 15px;
-            font-size: 13px;
-            color: #AAAAAA;
-            font-style: italic;
-        ">
-            &#128200; Analisis estadistico avanzado para tus apuestas deportivas
-        </div>
-    </div></body></html>""", height=320, scrolling=False)
+    col_img = st.columns([1, 3, 1])
+    with col_img[1]:
+        st.image("logo.jpeg", use_container_width=True)
 
     b1, b2, b3 = st.columns([2, 1, 1])
     with b2:
