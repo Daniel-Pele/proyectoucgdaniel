@@ -478,6 +478,78 @@ LIGAS["Copa Mundial 2026"].update({
     "DR Congo": 1610, "Panama": 1620,
 })
 
+TEAM_IDS = {
+    # Premier League
+    "Arsenal": 57, "Aston Villa": 58, "Chelsea": 61, "Everton": 62, "Fulham": 63,
+    "Liverpool": 64, "Manchester City": 65, "Manchester United": 66, "Newcastle": 67,
+    "Tottenham": 73, "Nottingham Forest": 351, "Crystal Palace": 354,
+    "Brighton": 397, "Brentford": 402, "Bournemouth": 1044, "Ipswich": 349,
+    # LaLiga
+    "Athletic Bilbao": 77, "Atletico Madrid": 78, "Osasuna": 79, "Espanyol": 80,
+    "Barcelona": 81, "Getafe": 82, "Real Madrid": 86, "Rayo Vallecano": 87,
+    "Real Betis": 90, "Real Sociedad": 92, "Villarreal": 94, "Valencia": 95,
+    "Alaves": 263, "Celta Vigo": 558, "Sevilla": 559,
+    # Serie A
+    "Milan": 98, "Fiorentina": 99, "Roma": 100, "Atalanta": 102, "Bologna": 103,
+    "Cagliari": 104, "Genoa": 107, "Inter": 108, "Juventus": 109, "Lazio": 110,
+    "Parma": 112, "Napoli": 113, "Udinese": 115, "Torino": 586, "Lecce": 5890,
+    "Como": 7397, "Venezia": 454,
+    # Bundesliga
+    "Bayer Leverkusen": 3, "Borussia Dortmund": 4, "Bayern Munich": 5,
+    "VfB Stuttgart": 10, "Werder Bremen": 12, "Mainz": 15, "Augsburg": 16,
+    "Freiburg": 17, "Borussia Monchengladbach": 18, "Eintracht Frankfurt": 19,
+    "Union Berlin": 28, "RB Leipzig": 721, "Hoffenheim": 2,
+    # Ligue 1
+    "Toulouse": 511, "Brest": 512, "Marseille": 516, "Auxerre": 519,
+    "Lille": 521, "Nice": 522, "Lyon": 523, "PSG": 524,
+    "Rennes": 529, "Angers": 532, "Le Havre": 533, "Lens": 546, "Monaco": 548,
+    "Strasbourg": 576,
+}
+
+LIGAS_API = {
+    "Premier League (Inglaterra)", "LaLiga (Espana)", "Serie A (Italia)",
+    "Bundesliga (Alemania)", "Ligue 1 (Francia)"
+}
+
+@st.cache_data(ttl=3600)
+def obtener_ultimos_partidos(team_id):
+    try:
+        api_key = st.secrets["FOOTBALL_API_KEY"]
+        url = f"https://api.football-data.org/v4/teams/{team_id}/matches?status=FINISHED&limit=5"
+        headers = {"X-Auth-Token": api_key}
+        resp = requests.get(url, headers=headers, timeout=10, verify=False)
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+        partidos = []
+        for m in data.get("matches", [])[-5:]:
+            home = m["homeTeam"]["name"]
+            away = m["awayTeam"]["name"]
+            gh = m["score"]["fullTime"]["home"]
+            ga = m["score"]["fullTime"]["away"]
+            if gh is None or ga is None:
+                continue
+            es_local = m["homeTeam"]["id"] == team_id
+            if es_local:
+                resultado = "G" if gh > ga else ("E" if gh == ga else "P")
+            else:
+                resultado = "G" if ga > gh else ("E" if gh == ga else "P")
+            partidos.append({
+                "rival": away if es_local else home,
+                "score": f"{gh}-{ga}",
+                "resultado": resultado,
+                "local": es_local,
+            })
+        return partidos
+    except Exception:
+        return []
+
+def nivel_elo(elo):
+    if elo >= 1850: return "ELITE"
+    if elo >= 1750: return "ALTO"
+    if elo >= 1650: return "MEDIO"
+    return "BAJO"
+
 def fuerza(elo):
     s = (elo - 1500.0) / 500.0
     return max(0.0, min(1.0, s))
@@ -768,6 +840,55 @@ if analizar and equipo_local != equipo_visit:
     registrar_pronostico()
     st.markdown("### Cuadro final consolidado (todas las opciones)")
     st.dataframe(resultado, hide_index=True, use_container_width=True)
+
+    # --- RESUMEN DE EQUIPOS ---
+    st.markdown("---")
+    st.markdown("### Resumen de equipos")
+    col_l, col_v = st.columns(2)
+
+    def mostrar_resumen(col, nombre, elo, es_liga_api):
+        with col:
+            st.markdown(f"#### {nombre}")
+            nivel = nivel_elo(elo)
+            color_nivel = {"ELITE": "gold", "ALTO": "green", "MEDIO": "orange", "BAJO": "red"}[nivel]
+            st.markdown(f"**Nivel:** :{color_nivel}[{nivel}] | **Elo:** {int(elo)}")
+            of = round(0.7 + 0.9 * fuerza(elo), 2)
+            df_ = round(1.4 - 0.7 * fuerza(elo), 2)
+            st.markdown(f"**Ataque:** {of} goles/partido | **Defensa concede:** {df_} goles/partido")
+            team_id = None
+            if es_liga_api:
+                for key, tid in TEAM_IDS.items():
+                    if key.lower() in nombre.lower() or nombre.lower() in key.lower():
+                        team_id = tid
+                        break
+            if team_id:
+                with st.spinner("Cargando ultimos partidos..."):
+                    ultimos = obtener_ultimos_partidos(team_id)
+                if ultimos:
+                    st.markdown("**Ultimos 5 partidos:**")
+                    for p in ultimos:
+                        loc_str = "L" if p["local"] else "V"
+                        emoji = "G" if p["resultado"] == "G" else ("E" if p["resultado"] == "E" else "P")
+                        st.markdown(f"[{emoji}] {loc_str} vs {p['rival']} — **{p['score']}**")
+                else:
+                    st.info("No hay historial disponible para este equipo.")
+            else:
+                st.markdown("**Perfil estimado por modelo:**")
+                barra = int(fuerza(elo) * 10)
+                st.markdown(f"Nivel: `{'X' * barra}{'-' * (10 - barra)}`")
+                st.caption("Historial no disponible — equipo fuera de ligas principales cubiertas.")
+
+    liga_es_api = not LIGA_LIBRE and liga in LIGAS_API
+    mostrar_resumen(col_l, equipo_local, elo_local, liga_es_api)
+    mostrar_resumen(col_v, equipo_visit, elo_visit, liga_es_api)
+
+    st.markdown("---")
+    st.markdown("**Comparativa de nivel entre equipos:**")
+    barra_l = int(fuerza(elo_local) * 20)
+    barra_v = int(fuerza(elo_visit) * 20)
+    st.markdown(f"**{equipo_local}:** `{'X' * barra_l}{'-' * (20 - barra_l)}` {int(elo_local)}")
+    st.markdown(f"**{equipo_visit}:** `{'X' * barra_v}{'-' * (20 - barra_v)}` {int(elo_visit)}")
+
 elif partidos_hoy:
     if not verificar_limite():
         st.error("Has alcanzado tu limite diario de pronosticos.")
