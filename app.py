@@ -645,7 +645,7 @@ def obtener_partidos_hoy():
         partidos = []
         for m in data.get("matches", []):
             estado = m.get("status", "")
-            if estado not in ("SCHEDULED", "TIMED", "IN_PLAY", "PAUSED", "LIVE"):
+            if estado not in ("SCHEDULED", "TIMED", "IN_PLAY", "PAUSED", "LIVE", "FINISHED"):
                 continue
             local = m["homeTeam"]["name"]
             visit = m["awayTeam"]["name"]
