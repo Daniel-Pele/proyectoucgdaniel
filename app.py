@@ -4,6 +4,7 @@ import pandas as pd
 import hashlib
 import re
 import random
+import requests
 from datetime import datetime
 from supabase import create_client, Client
 
@@ -513,6 +514,7 @@ else:
 st.sidebar.markdown("---")
 analizar = st.sidebar.button("ANALIZAR")
 mejores_hoy = st.sidebar.button("TOP 5 PARTIDOS RECOMENDADOS")
+partidos_hoy = st.sidebar.button("TOP 5 PARTIDOS DE HOY")
 
 partido = equipo_local + " vs " + equipo_visit
 
@@ -629,6 +631,38 @@ def calcular_probabilidades(elo_l, elo_v, vent, lam, mu, rho, tarjetas):
         ("Marcadores mas probables", f"Top 3: {top3[2][0]}"):   top3[2][1],
     }
 
+@st.cache_data(ttl=3600)
+def obtener_partidos_hoy():
+    try:
+        api_key = st.secrets["FOOTBALL_API_KEY"]
+        hoy = datetime.now().strftime("%Y-%m-%d")
+        url = f"https://api.football-data.org/v4/matches?date={hoy}"
+        headers = {"X-Auth-Token": api_key}
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+        partidos = []
+        for m in data.get("matches", []):
+            estado = m.get("status", "")
+            if estado not in ("SCHEDULED", "TIMED", "IN_PLAY"):
+                continue
+            local = m["homeTeam"]["name"]
+            visit = m["awayTeam"]["name"]
+            liga  = m.get("competition", {}).get("name", "Internacional")
+            partidos.append({"local": local, "visit": visit, "liga": liga})
+        return partidos
+    except Exception:
+        return []
+
+def buscar_elo(nombre):
+    nombre_lower = nombre.lower()
+    for nombre_liga, equipos in LIGAS.items():
+        for equipo, elo in equipos.items():
+            if equipo.lower() in nombre_lower or nombre_lower in equipo.lower():
+                return float(elo)
+    return 1650.0
+
 def generar_top5_partidos():
     seed = int(datetime.now().strftime("%Y%m%d"))
     random.seed(seed)
@@ -717,6 +751,59 @@ if analizar and equipo_local != equipo_visit:
     registrar_pronostico()
     st.markdown("### Cuadro final consolidado (todas las opciones)")
     st.dataframe(resultado, hide_index=True, use_container_width=True)
+elif partidos_hoy:
+    if not verificar_limite():
+        st.error("Has alcanzado tu limite diario de pronosticos.")
+        st.warning(f"Tienes el plan **{plan_actual.upper()}** ({limite_actual} pronosticos/dia).")
+        st.link_button("Contactar por WhatsApp para suscribirte", WHATSAPP)
+        st.stop()
+
+    st.markdown("---")
+    st.markdown(f"## TOP 5 PARTIDOS DE HOY — {datetime.now().strftime('%d/%m/%Y')}")
+
+    with st.spinner("Obteniendo partidos de hoy..."):
+        partidos = obtener_partidos_hoy()
+
+    if not partidos:
+        st.warning("No se encontraron partidos programados para hoy o hubo un error con la API.")
+    else:
+        candidatos = []
+        for p in partidos:
+            elo_l = buscar_elo(p["local"])
+            elo_v = buscar_elo(p["visit"])
+            gf_l2 = goles_favor(elo_l); gc_l2 = goles_contra(elo_l)
+            gf_v2 = goles_favor(elo_v); gc_v2 = goles_contra(elo_v)
+            lam2 = round((gf_l2 + gc_v2) / 2.0 * 1.05, 2)
+            mu2  = round((gf_v2 + gc_l2) / 2.0 * 0.88, 2)
+            pr = calcular_probabilidades(elo_l, elo_v, 60.0, lam2, mu2, -0.05, 4.0)
+            pl = pr[("Resultado 1X2", "Local")]
+            pe = pr[("Resultado 1X2", "Empate")]
+            pv = pr[("Resultado 1X2", "Visitante")]
+            mejor_prob = max(pl, pe, pv)
+            candidatos.append({
+                "liga": p["liga"], "local": p["local"], "visit": p["visit"],
+                "p_local": pl, "p_empate": pe, "p_visit": pv,
+                "mejor_prob": mejor_prob,
+                "favorito": "LOCAL" if pl == mejor_prob else ("EMPATE" if pe == mejor_prob else "VISITANTE"),
+            })
+        candidatos.sort(key=lambda x: x["mejor_prob"], reverse=True)
+        top5 = candidatos[:5]
+
+        st.caption(f"Se encontraron {len(partidos)} partidos hoy. Mostrando los 5 con mayor probabilidad de resultado claro.")
+        for i, m in enumerate(top5, 1):
+            with st.container():
+                st.markdown(f"### {i}. {m['local']} vs {m['visit']}")
+                st.caption(f"Liga: {m['liga']}")
+                c1, c2, c3, c4 = st.columns([2, 2, 2, 2])
+                c1.metric("LOCAL gana",     f"{m['p_local']*100:.1f}%")
+                c2.metric("EMPATE",         f"{m['p_empate']*100:.1f}%")
+                c3.metric("VISITANTE gana", f"{m['p_visit']*100:.1f}%")
+                color = "green" if m["mejor_prob"] >= 0.60 else "orange"
+                c4.markdown(f"**Favorito:** :{color}[{m['favorito']} ({m['mejor_prob']*100:.1f}%)]")
+                st.info(f"Para analisis completo selecciona 'Otra liga (libre)' y escribe: **{m['local']}** vs **{m['visit']}**")
+                st.markdown("---")
+        registrar_pronostico()
+
 elif mejores_hoy:
     if not verificar_limite():
         st.error("Has alcanzado tu limite diario de pronosticos.")
