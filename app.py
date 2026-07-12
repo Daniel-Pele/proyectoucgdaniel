@@ -561,7 +561,7 @@ def tau(x, y, lam, mu, rho):
     if x == 1 and y == 1: return 1 - rho
     return 1.0
 
-def calcular_probabilidades(elo_l, elo_v, vent, lam, mu, rho, tarjetas):
+def calcular_probabilidades(elo_l, elo_v, vent, lam, mu, rho, tarjetas, elo_l_raw=None, elo_v_raw=None):
     exp_local = 1 / (1 + 10 ** (-((elo_l + vent) - elo_v) / 400))
 
     nmax = 9
@@ -602,6 +602,15 @@ def calcular_probabilidades(elo_l, elo_v, vent, lam, mu, rho, tarjetas):
 
     p_tarj_si = 1 - sum(poisson(k, tarjetas) for k in range(4))
 
+    # Corners: basado en fuerza de ataque (Elo)
+    elo_l = elo_l_raw if elo_l_raw is not None else elo_l
+    elo_v = elo_v_raw if elo_v_raw is not None else elo_v
+    corners_local  = round(3.5 + 4.0 * fuerza(elo_l), 2)
+    corners_visit  = round(3.0 + 3.5 * fuerza(elo_v), 2)
+    corners_total  = round(corners_local + corners_visit, 2)
+    p_over85_corn  = 1 - sum(poisson(k, corners_total) for k in range(9))
+    p_over105_corn = 1 - sum(poisson(k, corners_total) for k in range(11))
+
     celdas = [(f"{x}-{y}", matriz[x][y]) for x in range(nmax) for y in range(nmax)]
     celdas.sort(key=lambda c: c[1], reverse=True)
     top3 = celdas[:3]
@@ -626,6 +635,13 @@ def calcular_probabilidades(elo_l, elo_v, vent, lam, mu, rho, tarjetas):
         ("Cualquier equipo gana", "Local o Visitante (No empate)"): 1 - p_draw,
         ("Probabilidad total tarjetas", ">3.5 Si"):              p_tarj_si,
         ("Probabilidad total tarjetas", ">3.5 No"):              1 - p_tarj_si,
+        ("Corners Local (promedio esperado)", f"{corners_local}"): corners_local / 10,
+        ("Corners Visitante (promedio esperado)", f"{corners_visit}"): corners_visit / 10,
+        ("Corners Total (promedio esperado)", f"{corners_total}"): corners_total / 15,
+        ("Corners totales >8.5", "Si"):                          p_over85_corn,
+        ("Corners totales >8.5", "No"):                          1 - p_over85_corn,
+        ("Corners totales >10.5", "Si"):                         p_over105_corn,
+        ("Corners totales >10.5", "No"):                         1 - p_over105_corn,
         ("Marcadores mas probables", f"Top 1: {top3[0][0]}"):   top3[0][1],
         ("Marcadores mas probables", f"Top 2: {top3[1][0]}"):   top3[1][1],
         ("Marcadores mas probables", f"Top 3: {top3[2][0]}"):   top3[2][1],
@@ -713,7 +729,8 @@ if analizar and equipo_local != equipo_visit and not verificar_limite():
 
 if analizar and equipo_local != equipo_visit:
     probs = calcular_probabilidades(
-        elo_local, elo_visit, ventaja, goles_local, goles_visit, rho, tarjetas_esp
+        elo_local, elo_visit, ventaja, goles_local, goles_visit, rho, tarjetas_esp,
+        elo_l_raw=elo_local, elo_v_raw=elo_visit
     )
 
     filas = []
