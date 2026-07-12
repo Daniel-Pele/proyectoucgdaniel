@@ -875,8 +875,8 @@ if analizar and equipo_local != equipo_visit:
             else:
                 st.markdown("**Perfil estimado por modelo:**")
                 barra = int(fuerza(elo) * 10)
-                st.markdown(f"Nivel: `{'X' * barra}{'-' * (10 - barra)}`")
-                st.caption("Historial no disponible — equipo fuera de ligas principales cubiertas.")
+                st.markdown(f"Nivel: `{'|' * barra}{'.' * (10 - barra)}`")
+                st.caption("Este equipo no pertenece a las ligas con historial disponible. Se muestra perfil estimado por el modelo.")
 
     liga_es_api = not LIGA_LIBRE and liga in LIGAS_API
     mostrar_resumen(col_l, equipo_local, elo_local, liga_es_api)
@@ -886,8 +886,8 @@ if analizar and equipo_local != equipo_visit:
     st.markdown("**Comparativa de nivel entre equipos:**")
     barra_l = int(fuerza(elo_local) * 20)
     barra_v = int(fuerza(elo_visit) * 20)
-    st.markdown(f"**{equipo_local}:** `{'X' * barra_l}{'-' * (20 - barra_l)}` {int(elo_local)}")
-    st.markdown(f"**{equipo_visit}:** `{'X' * barra_v}{'-' * (20 - barra_v)}` {int(elo_visit)}")
+    st.markdown(f"**{equipo_local}:** `{'|' * barra_l}{'.' * (20 - barra_l)}` {int(elo_local)}")
+    st.markdown(f"**{equipo_visit}:** `{'|' * barra_v}{'.' * (20 - barra_v)}` {int(elo_visit)}")
 
 elif partidos_hoy:
     if not verificar_limite():
