@@ -638,7 +638,7 @@ def obtener_partidos_hoy():
         hoy = datetime.now().strftime("%Y-%m-%d")
         url = f"https://api.football-data.org/v4/matches?date={hoy}"
         headers = {"X-Auth-Token": api_key}
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=10, verify=False)
         if resp.status_code != 200:
             return [], f"Error API: {resp.status_code} - {resp.text[:200]}"
         data = resp.json()
