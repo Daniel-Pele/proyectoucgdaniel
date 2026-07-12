@@ -3,6 +3,7 @@ import math
 import pandas as pd
 import hashlib
 import re
+import random
 from datetime import datetime
 from supabase import create_client, Client
 
@@ -511,6 +512,7 @@ else:
 
 st.sidebar.markdown("---")
 analizar = st.sidebar.button("ANALIZAR")
+mejores_hoy = st.sidebar.button("TOP 5 PARTIDOS DEL DIA")
 
 partido = equipo_local + " vs " + equipo_visit
 
@@ -627,6 +629,39 @@ def calcular_probabilidades(elo_l, elo_v, vent, lam, mu, rho, tarjetas):
         ("Marcadores mas probables", f"Top 3: {top3[2][0]}"):   top3[2][1],
     }
 
+def generar_top5_partidos():
+    seed = int(datetime.now().strftime("%Y%m%d"))
+    random.seed(seed)
+    ligas_disponibles = [l for l in LIGAS.keys() if l != "Copa Mundial 2026"]
+    candidatos = []
+    for nombre_liga in ligas_disponibles:
+        equipos = list(LIGAS[nombre_liga].keys())
+        if len(equipos) < 2:
+            continue
+        pares = [(equipos[i], equipos[j]) for i in range(len(equipos)) for j in range(i+1, len(equipos))]
+        seleccionados = random.sample(pares, min(3, len(pares)))
+        for loc, vis in seleccionados:
+            elo_l = float(LIGAS[nombre_liga][loc])
+            elo_v = float(LIGAS[nombre_liga][vis])
+            gf_l2 = goles_favor(elo_l); gc_l2 = goles_contra(elo_l)
+            gf_v2 = goles_favor(elo_v); gc_v2 = goles_contra(elo_v)
+            lam2 = round((gf_l2 + gc_v2) / 2.0 * 1.05, 2)
+            mu2  = round((gf_v2 + gc_l2) / 2.0 * 0.88, 2)
+            p = calcular_probabilidades(elo_l, elo_v, 60.0, lam2, mu2, -0.05, 4.0)
+            pl = p[("Resultado 1X2", "Local")]
+            pe = p[("Resultado 1X2", "Empate")]
+            pv = p[("Resultado 1X2", "Visitante")]
+            mejor_prob = max(pl, pe, pv)
+            if mejor_prob >= 0.50:
+                candidatos.append({
+                    "liga": nombre_liga, "local": loc, "visit": vis,
+                    "p_local": pl, "p_empate": pe, "p_visit": pv,
+                    "mejor_prob": mejor_prob,
+                    "favorito": "LOCAL" if pl == mejor_prob else ("EMPATE" if pe == mejor_prob else "VISITANTE"),
+                })
+    candidatos.sort(key=lambda x: x["mejor_prob"], reverse=True)
+    return candidatos[:5]
+
 plan_actual = st.session_state.get("usuario_plan", "gratis")
 limite_actual = LIMITES.get(plan_actual, 3)
 if plan_actual != "pro":
@@ -682,5 +717,33 @@ if analizar and equipo_local != equipo_visit:
     registrar_pronostico()
     st.markdown("### Cuadro final consolidado (todas las opciones)")
     st.dataframe(resultado, hide_index=True, use_container_width=True)
+elif mejores_hoy:
+    if not verificar_limite():
+        st.error("Has alcanzado tu limite diario de pronosticos.")
+        st.warning(f"Tienes el plan **{plan_actual.upper()}** ({limite_actual} pronosticos/dia).")
+        st.link_button("Contactar por WhatsApp para suscribirte", WHATSAPP)
+        st.stop()
+
+    st.markdown("---")
+    st.markdown("## TOP 5 PARTIDOS DEL DIA")
+    st.caption("Partidos con mayor probabilidad de resultado claro segun el modelo hibrido")
+
+    top5 = generar_top5_partidos()
+    if not top5:
+        st.warning("No se encontraron partidos con probabilidad suficiente. Intenta mas tarde.")
+    else:
+        for i, m in enumerate(top5, 1):
+            with st.container():
+                st.markdown(f"### {i}. {m['local']} vs {m['visit']}")
+                st.caption(f"Liga: {m['liga']}")
+                c1, c2, c3, c4 = st.columns([2, 2, 2, 2])
+                c1.metric("LOCAL gana",    f"{m['p_local']*100:.1f}%")
+                c2.metric("EMPATE",        f"{m['p_empate']*100:.1f}%")
+                c3.metric("VISITANTE gana",f"{m['p_visit']*100:.1f}%")
+                color = "green" if m["mejor_prob"] >= 0.60 else "orange"
+                c4.markdown(f"**Favorito:** :{color}[{m['favorito']} ({m['mejor_prob']*100:.1f}%)]")
+                st.info(f"Para analisis completo: selecciona **{m['liga']}** en LIGA, pon **{m['local']}** como local y **{m['visit']}** como visitante, luego presiona ANALIZAR.")
+                st.markdown("---")
+    registrar_pronostico()
 else:
     st.info("Elige liga y equipos, revisa los datos y presiona ANALIZAR en el menu lateral.")
