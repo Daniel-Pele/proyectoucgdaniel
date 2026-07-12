@@ -768,7 +768,8 @@ elif partidos_hoy:
         st.error(f"Error al conectar con la API: {error_api}")
         st.stop()
     if not partidos:
-        st.warning("No se encontraron partidos programados para hoy o hubo un error con la API.")
+        st.warning("No hay partidos disponibles hoy en las ligas cubiertas (Premier League, LaLiga, Serie A, Bundesliga, Ligue 1, Copa Mundial, entre otras).")
+        st.info("Prueba manana o usa el boton TOP 5 PARTIDOS RECOMENDADOS para ver sugerencias del modelo.")
     else:
         candidatos = []
         for p in partidos:
