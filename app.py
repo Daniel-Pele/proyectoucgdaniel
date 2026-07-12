@@ -489,11 +489,25 @@ def goles_contra(elo):
 # ----- MENU LATERAL: PARAMETROS -----
 st.sidebar.header("PARAMETROS")
 
-liga = st.sidebar.selectbox("LIGA", list(LIGAS.keys()))
-equipos_liga = list(LIGAS[liga].keys())
+OPCIONES_LIGA = list(LIGAS.keys()) + ["--- Otra liga (libre) ---"]
+liga = st.sidebar.selectbox("LIGA", OPCIONES_LIGA)
 
-equipo_local = st.sidebar.selectbox("EQUIPO LOCAL", equipos_liga, index=0)
-equipo_visit = st.sidebar.selectbox("EQUIPO VISITANTE", equipos_liga, index=1)
+LIGA_LIBRE = liga == "--- Otra liga (libre) ---"
+
+if LIGA_LIBRE:
+    st.sidebar.info("Escribe cualquier equipo del mundo")
+    equipo_local = st.sidebar.text_input("EQUIPO LOCAL", placeholder="Ej: Deportivo Cuenca")
+    equipo_visit = st.sidebar.text_input("EQUIPO VISITANTE", placeholder="Ej: River Plate")
+    if not equipo_local: equipo_local = "Equipo Local"
+    if not equipo_visit: equipo_visit = "Equipo Visitante"
+    elo_l_base = 1650.0
+    elo_v_base = 1650.0
+else:
+    equipos_liga = list(LIGAS[liga].keys())
+    equipo_local = st.sidebar.selectbox("EQUIPO LOCAL", equipos_liga, index=0)
+    equipo_visit = st.sidebar.selectbox("EQUIPO VISITANTE", equipos_liga, index=1)
+    elo_l_base = float(LIGAS[liga][equipo_local])
+    elo_v_base = float(LIGAS[liga][equipo_visit])
 
 st.sidebar.markdown("---")
 analizar = st.sidebar.button("ANALIZAR")
@@ -502,9 +516,6 @@ partido = equipo_local + " vs " + equipo_visit
 
 if equipo_local == equipo_visit:
     st.warning("El equipo local y el visitante no pueden ser el mismo. Cambia uno de los dos.")
-
-elo_l_base = float(LIGAS[liga][equipo_local])
-elo_v_base = float(LIGAS[liga][equipo_visit])
 
 gf_l, gc_l = goles_favor(elo_l_base), goles_contra(elo_l_base)
 gf_v, gc_v = goles_favor(elo_v_base), goles_contra(elo_v_base)
