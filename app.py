@@ -640,20 +640,20 @@ def obtener_partidos_hoy():
         headers = {"X-Auth-Token": api_key}
         resp = requests.get(url, headers=headers, timeout=10)
         if resp.status_code != 200:
-            return []
+            return [], f"Error API: {resp.status_code} - {resp.text[:200]}"
         data = resp.json()
         partidos = []
         for m in data.get("matches", []):
             estado = m.get("status", "")
-            if estado not in ("SCHEDULED", "TIMED", "IN_PLAY"):
+            if estado not in ("SCHEDULED", "TIMED", "IN_PLAY", "PAUSED", "LIVE"):
                 continue
             local = m["homeTeam"]["name"]
             visit = m["awayTeam"]["name"]
             liga  = m.get("competition", {}).get("name", "Internacional")
             partidos.append({"local": local, "visit": visit, "liga": liga})
-        return partidos
-    except Exception:
-        return []
+        return partidos, None
+    except Exception as e:
+        return [], str(e)
 
 def buscar_elo(nombre):
     nombre_lower = nombre.lower()
@@ -762,8 +762,11 @@ elif partidos_hoy:
     st.markdown(f"## TOP 5 PARTIDOS DE HOY — {datetime.now().strftime('%d/%m/%Y')}")
 
     with st.spinner("Obteniendo partidos de hoy..."):
-        partidos = obtener_partidos_hoy()
+        partidos, error_api = obtener_partidos_hoy()
 
+    if error_api:
+        st.error(f"Error al conectar con la API: {error_api}")
+        st.stop()
     if not partidos:
         st.warning("No se encontraron partidos programados para hoy o hubo un error con la API.")
     else:
