@@ -512,7 +512,7 @@ else:
 
 st.sidebar.markdown("---")
 analizar = st.sidebar.button("ANALIZAR")
-mejores_hoy = st.sidebar.button("TOP 5 PARTIDOS DEL DIA")
+mejores_hoy = st.sidebar.button("TOP 5 PARTIDOS RECOMENDADOS")
 
 partido = equipo_local + " vs " + equipo_visit
 
@@ -725,8 +725,8 @@ elif mejores_hoy:
         st.stop()
 
     st.markdown("---")
-    st.markdown("## TOP 5 PARTIDOS DEL DIA")
-    st.caption("Partidos con mayor probabilidad de resultado claro segun el modelo hibrido")
+    st.markdown("## TOP 5 PARTIDOS RECOMENDADOS")
+    st.info("Estos partidos son seleccionados por el modelo hibrido como los de mayor probabilidad de resultado claro. Verifica en tu casa de apuestas si se juegan hoy.")
 
     top5 = generar_top5_partidos()
     if not top5:
