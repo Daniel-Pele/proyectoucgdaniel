@@ -850,8 +850,8 @@ if analizar and equipo_local != equipo_visit:
         with col:
             st.markdown(f"#### {nombre}")
             nivel = nivel_elo(elo)
-            color_nivel = {"ELITE": "gold", "ALTO": "green", "MEDIO": "orange", "BAJO": "red"}[nivel]
-            st.markdown(f"**Nivel:** :{color_nivel}[{nivel}] | **Elo:** {int(elo)}")
+            color_nivel = {"ELITE": "#F5C518", "ALTO": "#2ecc71", "MEDIO": "#e67e22", "BAJO": "#e74c3c"}[nivel]
+            st.markdown(f"**Nivel:** <span style='color:{color_nivel};font-weight:bold'>{nivel}</span> | **Elo:** {int(elo)}", unsafe_allow_html=True)
             of = round(0.7 + 0.9 * fuerza(elo), 2)
             df_ = round(1.4 - 0.7 * fuerza(elo), 2)
             st.markdown(f"**Ataque:** {of} goles/partido | **Defensa concede:** {df_} goles/partido")
@@ -867,11 +867,12 @@ if analizar and equipo_local != equipo_visit:
                 if ultimos:
                     st.markdown("**Ultimos 5 partidos:**")
                     for p in ultimos:
-                        loc_str = "L" if p["local"] else "V"
-                        emoji = "G" if p["resultado"] == "G" else ("E" if p["resultado"] == "E" else "P")
-                        st.markdown(f"[{emoji}] {loc_str} vs {p['rival']} — **{p['score']}**")
+                        loc_str = "Local" if p["local"] else "Visitante"
+                        color_r = "#2ecc71" if p["resultado"] == "G" else ("#e67e22" if p["resultado"] == "E" else "#e74c3c")
+                        etiq = "GANO" if p["resultado"] == "G" else ("EMPATO" if p["resultado"] == "E" else "PERDIO")
+                        st.markdown(f"<span style='color:{color_r};font-weight:bold'>{etiq}</span> ({loc_str}) vs {p['rival']} — **{p['score']}**", unsafe_allow_html=True)
                 else:
-                    st.info("No hay historial disponible para este equipo.")
+                    st.info("Historial no disponible en este momento — la liga puede estar en temporada baja.")
             else:
                 st.markdown("**Perfil estimado por modelo:**")
                 barra = int(fuerza(elo) * 10)
