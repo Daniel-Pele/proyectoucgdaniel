@@ -974,8 +974,14 @@ if analizar and equipo_local != equipo_visit:
                     st.info("Historial no disponible en este momento — la liga puede estar en temporada baja.")
             else:
                 st.markdown("**Perfil estimado por modelo:**")
-                barra = int(fuerza(elo) * 10)
-                st.markdown(f"Nivel: `{'|' * barra}{'.' * (10 - barra)}`")
+                pct_nivel = round(max(0, min(1, (elo - 1200) / 800)) * 100, 1)
+                color_barra = {"ELITE": "#F5C518", "ALTO": "#2ecc71", "MEDIO": "#e67e22", "BAJO": "#e74c3c"}[nivel_elo(elo)]
+                st.markdown(f"""
+                <div style='background:#1e2a38;border-radius:6px;height:14px;width:100%;margin:4px 0 8px 0'>
+                  <div style='background:{color_barra};width:{pct_nivel}%;height:14px;border-radius:6px'></div>
+                </div>
+                <small style='color:#aaa'>{pct_nivel}% del nivel maximo</small>
+                """, unsafe_allow_html=True)
                 st.caption("Este equipo no pertenece a las ligas con historial disponible. Se muestra perfil estimado por el modelo.")
 
     mostrar_resumen(col_l, equipo_local, elo_local_ajustado, liga_es_api)
@@ -983,10 +989,21 @@ if analizar and equipo_local != equipo_visit:
 
     st.markdown("---")
     st.markdown("**Comparativa de nivel entre equipos:**")
-    barra_l = int(fuerza(elo_local) * 20)
-    barra_v = int(fuerza(elo_visit) * 20)
-    st.markdown(f"**{equipo_local}:** `{'|' * barra_l}{'.' * (20 - barra_l)}` {int(elo_local)}")
-    st.markdown(f"**{equipo_visit}:** `{'|' * barra_v}{'.' * (20 - barra_v)}` {int(elo_visit)}")
+    def barra_html(nombre, elo_val):
+        pct = round(max(0, min(1, (elo_val - 1200) / 800)) * 100, 1)
+        nivel = nivel_elo(elo_val)
+        color = {"ELITE": "#F5C518", "ALTO": "#2ecc71", "MEDIO": "#e67e22", "BAJO": "#e74c3c"}[nivel]
+        return f"""
+        <div style='margin-bottom:10px'>
+          <div style='display:flex;justify-content:space-between;margin-bottom:3px'>
+            <span style='font-weight:bold'>{nombre}</span>
+            <span style='color:{color};font-weight:bold'>{nivel} &nbsp;|&nbsp; Elo {int(elo_val)} &nbsp;({pct}%)</span>
+          </div>
+          <div style='background:#1e2a38;border-radius:6px;height:18px;width:100%'>
+            <div style='background:{color};width:{pct}%;height:18px;border-radius:6px'></div>
+          </div>
+        </div>"""
+    st.markdown(barra_html(equipo_local, elo_local) + barra_html(equipo_visit, elo_visit), unsafe_allow_html=True)
 
 elif partidos_hoy:
     if not verificar_limite():
