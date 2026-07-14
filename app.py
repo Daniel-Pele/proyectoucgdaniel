@@ -923,6 +923,68 @@ if analizar and equipo_local != equipo_visit:
     st.markdown("### Cuadro final consolidado (todas las opciones)")
     st.dataframe(resultado, hide_index=True, use_container_width=True)
 
+    # --- RESUMEN AUTOMATICO EN TEXTO ---
+    st.markdown("---")
+    st.markdown("### Resumen ejecutivo del modelo")
+
+    def generar_resumen(local, visit, p_loc, p_emp, p_vis, p_over25, p_btts, corners_tot, p_over85_c, top1):
+        lineas = []
+
+        # Resultado
+        if p_loc >= p_vis and p_loc >= p_emp:
+            tendencia = f"el modelo favorece a **{local}** como local con un {p_loc*100:.1f}% de probabilidad"
+        elif p_vis >= p_loc and p_vis >= p_emp:
+            tendencia = f"el modelo favorece a **{visit}** como visitante con un {p_vis*100:.1f}% de probabilidad"
+        else:
+            tendencia = f"el modelo ve un partido muy equilibrado con {p_emp*100:.1f}% de probabilidad de empate"
+
+        lineas.append(f"Para el partido **{local}** vs **{visit}**, {tendencia}.")
+
+        # Goles
+        if p_over25 >= 0.60:
+            lineas.append(f"En cuanto a goles, se espera un partido con **mas de 2.5 goles** ({p_over25*100:.1f}% de probabilidad).")
+        else:
+            lineas.append(f"En cuanto a goles, el modelo anticipa un partido de **pocos goles**, con {(1-p_over25)*100:.1f}% de probabilidad de quedar en 2 goles o menos.")
+
+        # BTTS
+        if p_btts >= 0.55:
+            lineas.append(f"Es probable que **ambos equipos anoten** ({p_btts*100:.1f}%).")
+        else:
+            lineas.append(f"No es probable que ambos equipos anoten ({(1-p_btts)*100:.1f}% de que alguno se quede en cero).")
+
+        # Corners
+        if p_over85_c >= 0.60:
+            lineas.append(f"En corners, se espera un partido activo con **mas de 8.5 corners** ({p_over85_c*100:.1f}% de probabilidad).")
+        else:
+            lineas.append(f"En corners, el modelo sugiere un volumen moderado (promedio esperado: {corners_tot:.1f} corners en total).")
+
+        # Marcador mas probable
+        lineas.append(f"El marcador mas probable segun el modelo es **{top1}**.")
+
+        # Conclusion
+        max_p = max(p_loc, p_emp, p_vis)
+        if max_p >= 0.55:
+            lineas.append("El modelo muestra **alta confianza** en este pronostico. Verifica siempre en tu casa de apuestas antes de decidir.")
+        elif max_p >= 0.45:
+            lineas.append("El modelo muestra **confianza moderada**. Se recomienda apostar con cautela.")
+        else:
+            lineas.append("El modelo considera este partido **muy incierto**. Las probabilidades estan muy repartidas.")
+
+        return " ".join(lineas)
+
+    top1_score = next((sub for cat, sub in probs.keys() if cat == "Marcadores mas probables" and "Top 1" in sub), "Top 1: 1-0").replace("Top 1: ", "")
+    corners_tot_val = next((float(sub) for cat, sub in probs.keys() if cat == "Corners Total (promedio esperado)"), 9.0)
+    resumen_texto = generar_resumen(
+        equipo_local, equipo_visit,
+        p_loc, p_emp, p_vis,
+        probs.get(("Total goles >2.5", "Si"), 0),
+        probs.get(("Ambos marcan (BTTS)", "Si"), 0),
+        corners_tot_val,
+        probs.get(("Corners totales >8.5", "Si"), 0),
+        top1_score
+    )
+    st.info(resumen_texto)
+
     # --- RESUMEN DE EQUIPOS ---
     st.markdown("---")
     st.markdown("### Resumen de equipos")
