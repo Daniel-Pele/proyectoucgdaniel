@@ -944,7 +944,9 @@ if analizar and equipo_local != equipo_visit:
             st.markdown(f"**Ataque:** {of} goles/partido | **Defensa concede:** {df_} goles/partido")
 
             # Tabla de posiciones
-            if tabla_pos:
+            if not liga_es_api:
+                st.caption("Posiciones no disponibles — liga fuera de las 5 principales europeas.")
+            elif tabla_pos:
                 info_tabla = next((v for k, v in tabla_pos.items() if nombre.lower() in k.lower() or k.lower() in nombre.lower()), None)
                 if info_tabla and info_tabla["pj"] > 0:
                     t1, t2, t3, t4 = st.columns(4)
