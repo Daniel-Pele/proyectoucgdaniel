@@ -723,7 +723,9 @@ def calcular_probabilidades(elo_l, elo_v, vent, lam, mu, rho, tarjetas, elo_l_ra
 def obtener_partidos_hoy():
     try:
         api_key = st.secrets["FOOTBALL_API_KEY"]
-        hoy = datetime.now().strftime("%Y-%m-%d")
+        from datetime import timezone, timedelta
+        ecuador_tz = timezone(timedelta(hours=-5))
+        hoy = datetime.now(ecuador_tz).strftime("%Y-%m-%d")
         url = f"https://api.football-data.org/v4/matches?date={hoy}"
         headers = {"X-Auth-Token": api_key}
         resp = requests.get(url, headers=headers, timeout=10, verify=False)
@@ -898,7 +900,9 @@ elif partidos_hoy:
         st.stop()
 
     st.markdown("---")
-    st.markdown(f"## TOP 5 PARTIDOS DE HOY — {datetime.now().strftime('%d/%m/%Y')}")
+    from datetime import timezone, timedelta
+    ecuador_tz = timezone(timedelta(hours=-5))
+    st.markdown(f"## TOP 5 PARTIDOS DE HOY — {datetime.now(ecuador_tz).strftime('%d/%m/%Y')}")
 
     with st.spinner("Obteniendo partidos de hoy..."):
         partidos, error_api = obtener_partidos_hoy()
