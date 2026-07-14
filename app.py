@@ -980,26 +980,29 @@ if analizar and equipo_local != equipo_visit:
 
         return " ".join(lineas)
 
-    top1_score = "1-0"
-    corners_tot_val = 9.0
-    for (cat, sub) in probs.keys():
-        if cat == "Marcadores mas probables" and "Top 1" in sub:
-            top1_score = sub.replace("Top 1: ", "")
-        if cat == "Corners Total (promedio esperado)":
-            try:
-                corners_tot_val = float(sub)
-            except Exception:
-                pass
-    resumen_texto = generar_resumen(
-        equipo_local, equipo_visit,
-        p_loc, p_emp, p_vis,
-        probs.get(("Total goles >2.5", "Si"), 0),
-        probs.get(("Ambos marcan (BTTS)", "Si"), 0),
-        corners_tot_val,
-        probs.get(("Corners totales >8.5", "Si"), 0),
-        top1_score
-    )
-    st.info(resumen_texto)
+    try:
+        top1_score = "1-0"
+        corners_tot_val = 9.0
+        for (cat, sub) in probs.keys():
+            if cat == "Marcadores mas probables" and "Top 1" in sub:
+                top1_score = sub.replace("Top 1: ", "")
+            if cat == "Corners Total (promedio esperado)":
+                try:
+                    corners_tot_val = float(sub)
+                except Exception:
+                    pass
+        resumen_texto = generar_resumen(
+            equipo_local, equipo_visit,
+            p_loc, p_emp, p_vis,
+            probs.get(("Total goles >2.5", "Si"), 0),
+            probs.get(("Ambos marcan (BTTS)", "Si"), 0),
+            corners_tot_val,
+            probs.get(("Corners totales >8.5", "Si"), 0),
+            top1_score
+        )
+        st.info(resumen_texto)
+    except Exception as e:
+        st.warning(f"Resumen no disponible: {e}")
 
     # --- RESUMEN DE EQUIPOS ---
     st.markdown("---")
