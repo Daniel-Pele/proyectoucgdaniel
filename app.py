@@ -980,8 +980,16 @@ if analizar and equipo_local != equipo_visit:
 
         return " ".join(lineas)
 
-    top1_score = next((sub for cat, sub in probs.keys() if cat == "Marcadores mas probables" and "Top 1" in sub), "Top 1: 1-0").replace("Top 1: ", "")
-    corners_tot_val = next((float(sub) for cat, sub in probs.keys() if cat == "Corners Total (promedio esperado)"), 9.0)
+    top1_score = "1-0"
+    corners_tot_val = 9.0
+    for (cat, sub) in probs.keys():
+        if cat == "Marcadores mas probables" and "Top 1" in sub:
+            top1_score = sub.replace("Top 1: ", "")
+        if cat == "Corners Total (promedio esperado)":
+            try:
+                corners_tot_val = float(sub)
+            except Exception:
+                pass
     resumen_texto = generar_resumen(
         equipo_local, equipo_visit,
         p_loc, p_emp, p_vis,
