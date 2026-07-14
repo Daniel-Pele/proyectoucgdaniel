@@ -511,6 +511,41 @@ LIGAS_API = {
     "Bundesliga (Alemania)", "Ligue 1 (Francia)"
 }
 
+CODIGO_LIGA = {
+    "Premier League (Inglaterra)": "PL",
+    "LaLiga (Espana)": "PD",
+    "Serie A (Italia)": "SA",
+    "Bundesliga (Alemania)": "BL1",
+    "Ligue 1 (Francia)": "FL1",
+}
+
+@st.cache_data(ttl=3600)
+def obtener_tabla_posiciones(codigo_liga):
+    try:
+        api_key = st.secrets["FOOTBALL_API_KEY"]
+        url = f"https://api.football-data.org/v4/competitions/{codigo_liga}/standings"
+        headers = {"X-Auth-Token": api_key}
+        resp = requests.get(url, headers=headers, timeout=10, verify=False)
+        if resp.status_code != 200:
+            return {}
+        data = resp.json()
+        tabla = {}
+        for entry in data.get("standings", [{}])[0].get("table", []):
+            nombre = entry["team"]["name"]
+            tabla[nombre] = {
+                "pos": entry["position"],
+                "pts": entry["points"],
+                "pj": entry["playedGames"],
+                "pg": entry["won"],
+                "pe": entry["draw"],
+                "pp": entry["lost"],
+                "gf": entry["goalsFor"],
+                "gc": entry["goalsAgainst"],
+            }
+        return tabla
+    except Exception:
+        return {}
+
 @st.cache_data(ttl=3600)
 def obtener_ultimos_partidos(team_id):
     try:
@@ -893,6 +928,11 @@ if analizar and equipo_local != equipo_visit:
     st.markdown("### Resumen de equipos")
     col_l, col_v = st.columns(2)
 
+    # Cargar tabla de posiciones si aplica
+    tabla_pos = {}
+    if liga_es_api and liga in CODIGO_LIGA:
+        tabla_pos = obtener_tabla_posiciones(CODIGO_LIGA[liga])
+
     def mostrar_resumen(col, nombre, elo, es_liga_api):
         with col:
             st.markdown(f"#### {nombre}")
@@ -902,6 +942,18 @@ if analizar and equipo_local != equipo_visit:
             of = round(0.7 + 0.9 * fuerza(elo), 2)
             df_ = round(1.4 - 0.7 * fuerza(elo), 2)
             st.markdown(f"**Ataque:** {of} goles/partido | **Defensa concede:** {df_} goles/partido")
+
+            # Tabla de posiciones
+            if tabla_pos:
+                info_tabla = next((v for k, v in tabla_pos.items() if nombre.lower() in k.lower() or k.lower() in nombre.lower()), None)
+                if info_tabla and info_tabla["pj"] > 0:
+                    t1, t2, t3, t4 = st.columns(4)
+                    t1.metric("Posicion", f"{info_tabla['pos']}deg")
+                    t2.metric("Puntos", info_tabla["pts"])
+                    t3.metric("PJ", info_tabla["pj"])
+                    t4.metric("GF/GC", f"{info_tabla['gf']}/{info_tabla['gc']}")
+                elif info_tabla:
+                    st.caption("Temporada aun no iniciada — tabla sin datos.")
             team_id = None
             if es_liga_api:
                 for key, tid in TEAM_IDS.items():
