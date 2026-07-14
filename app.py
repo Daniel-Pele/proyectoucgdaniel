@@ -961,6 +961,14 @@ if analizar and equipo_local != equipo_visit:
         # Marcador mas probable
         lineas.append(f"El marcador mas probable segun el modelo es **{top1}**.")
 
+        # Doble oportunidad
+        p_1x = p_loc + p_emp
+        p_x2 = p_vis + p_emp
+        if p_1x >= 0.70 and p_1x >= p_x2:
+            lineas.append(f"**Doble oportunidad recomendada: 1X ({local} gana o Empate)** con {p_1x*100:.1f}% de probabilidad combinada — buena opcion de bajo riesgo.")
+        elif p_x2 >= 0.70:
+            lineas.append(f"**Doble oportunidad recomendada: X2 ({visit} gana o Empate)** con {p_x2*100:.1f}% de probabilidad combinada — buena opcion de bajo riesgo.")
+
         # Conclusion
         max_p = max(p_loc, p_emp, p_vis)
         if max_p >= 0.55:
