@@ -544,6 +544,22 @@ def obtener_ultimos_partidos(team_id):
     except Exception:
         return []
 
+def calcular_ajuste_forma(partidos):
+    if not partidos:
+        return 0.0, "Sin datos"
+    puntos = {"G": 1, "E": 0, "P": -1}
+    # Dar mas peso a partidos recientes
+    pesos = [0.35, 0.25, 0.20, 0.12, 0.08]
+    total = 0.0
+    for i, p in enumerate(reversed(partidos)):
+        peso = pesos[i] if i < len(pesos) else 0.05
+        total += puntos.get(p["resultado"], 0) * peso
+    # total va de -1 a 1, convertir a ajuste Elo (-80 a +80)
+    ajuste = round(total * 80, 1)
+    resultados = [p["resultado"] for p in reversed(partidos)]
+    racha = "".join(resultados)
+    return ajuste, racha
+
 def nivel_elo(elo):
     if elo >= 1850: return "ELITE"
     if elo >= 1750: return "ALTO"
@@ -802,9 +818,28 @@ if analizar and equipo_local != equipo_visit and not verificar_limite():
     st.stop()
 
 if analizar and equipo_local != equipo_visit:
+    # Ajuste por forma reciente si hay datos de API
+    liga_es_api = not LIGA_LIBRE and liga in LIGAS_API
+    ajuste_l = ajuste_v = 0.0
+    racha_l = racha_v = None
+    ultimos_l = ultimos_v = []
+
+    if liga_es_api:
+        tid_l = next((tid for k, tid in TEAM_IDS.items() if k.lower() in equipo_local.lower() or equipo_local.lower() in k.lower()), None)
+        tid_v = next((tid for k, tid in TEAM_IDS.items() if k.lower() in equipo_visit.lower() or equipo_visit.lower() in k.lower()), None)
+        if tid_l:
+            ultimos_l = obtener_ultimos_partidos(tid_l)
+            ajuste_l, racha_l = calcular_ajuste_forma(ultimos_l)
+        if tid_v:
+            ultimos_v = obtener_ultimos_partidos(tid_v)
+            ajuste_v, racha_v = calcular_ajuste_forma(ultimos_v)
+
+    elo_local_ajustado = elo_local + ajuste_l
+    elo_visit_ajustado = elo_visit + ajuste_v
+
     probs = calcular_probabilidades(
-        elo_local, elo_visit, ventaja, goles_local, goles_visit, rho, tarjetas_esp,
-        elo_l_raw=elo_local, elo_v_raw=elo_visit
+        elo_local_ajustado, elo_visit_ajustado, ventaja, goles_local, goles_visit, rho, tarjetas_esp,
+        elo_l_raw=elo_local_ajustado, elo_v_raw=elo_visit_ajustado
     )
 
     filas = []
@@ -826,6 +861,16 @@ if analizar and equipo_local != equipo_visit:
     p_loc = probs[("Resultado 1X2", "Local")]
     p_emp = probs[("Resultado 1X2", "Empate")]
     p_vis = probs[("Resultado 1X2", "Visitante")]
+
+    # Mostrar ajuste de forma si aplica
+    if liga_es_api and (ajuste_l != 0 or ajuste_v != 0):
+        f1, f2 = st.columns(2)
+        def color_ajuste(a):
+            return "#2ecc71" if a > 0 else ("#e74c3c" if a < 0 else "#aaaaaa")
+        signo_l = "+" if ajuste_l >= 0 else ""
+        signo_v = "+" if ajuste_v >= 0 else ""
+        f1.markdown(f"**Forma reciente {equipo_local}:** <span style='color:{color_ajuste(ajuste_l)};font-weight:bold'>{signo_l}{ajuste_l} Elo</span> | Racha: `{racha_l}`", unsafe_allow_html=True)
+        f2.markdown(f"**Forma reciente {equipo_visit}:** <span style='color:{color_ajuste(ajuste_v)};font-weight:bold'>{signo_v}{ajuste_v} Elo</span> | Racha: `{racha_v}`", unsafe_allow_html=True)
 
     st.markdown("### Resumen del resultado (1X2)")
     r1, r2, r3 = st.columns(3)
@@ -881,9 +926,8 @@ if analizar and equipo_local != equipo_visit:
                 st.markdown(f"Nivel: `{'|' * barra}{'.' * (10 - barra)}`")
                 st.caption("Este equipo no pertenece a las ligas con historial disponible. Se muestra perfil estimado por el modelo.")
 
-    liga_es_api = not LIGA_LIBRE and liga in LIGAS_API
-    mostrar_resumen(col_l, equipo_local, elo_local, liga_es_api)
-    mostrar_resumen(col_v, equipo_visit, elo_visit, liga_es_api)
+    mostrar_resumen(col_l, equipo_local, elo_local_ajustado, liga_es_api)
+    mostrar_resumen(col_v, equipo_visit, elo_visit_ajustado, liga_es_api)
 
     st.markdown("---")
     st.markdown("**Comparativa de nivel entre equipos:**")
